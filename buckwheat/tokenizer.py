@@ -1,16 +1,17 @@
 """
 Tokenization-related functionality.
 """
+from collections import deque
 import logging
 import os
 from tempfile import TemporaryDirectory
 from typing import Iterator, List, Optional, Set, Tuple, Union
 
 from joblib import cpu_count, delayed, Parallel
+import pygments
 from pygments.lexers.haskell import HaskellLexer
 from pygments.lexers.jvm import KotlinLexer, ScalaLexer
 from pygments.lexers.objective import SwiftLexer
-import pygments
 import tree_sitter
 
 from .language_recognition.utils import recognize_languages_dir
@@ -18,8 +19,8 @@ from .parsing.utils import get_parser
 from .saver import OutputFormats
 from .subtokenizer import TokenParser
 from .utils import SUPPORTED_LANGUAGES, PARSING_MODES, GRANULARITIES, OUTPUT_FORMATS, \
-    IdentifiersTypes, ObjectTypes, FileData, IdentifierData, ObjectData, RepositoryError,\
-    assert_trailing_slash, clone_repository, get_full_path, get_latest_commit, read_file,\
+    IdentifiersTypes, ObjectTypes, FileData, IdentifierData, ObjectData, RepositoryError, \
+    assert_trailing_slash, clone_repository, get_full_path, get_latest_commit, read_file, \
     to_batches, transform_files_list
 
 # TODO: better naming
@@ -80,7 +81,7 @@ class TreeSitterParser:
                    "Java": {"identifier", "type_identifier"},
                    "Go": {"identifier", "field_identifier", "type_identifier"},
                    "C++": {"identifier", "namespace_identifier", "field_identifier",
-                           "type_identifier"},
+                           "type_identifier", "system_lib_string"},
                    "Ruby": {"identifier", "constant", "symbol"},
                    "TypeScript": {"identifier", "property_identifier",
                                   "shorthand_property_identifier", "type_identifier"},
@@ -120,6 +121,17 @@ class TreeSitterParser:
                  "Shell": {"function_definition"},
                  "Rust": {"function_item"}}
 
+    # Tree-sitter nodes corresponding to imports in a given language.
+    IMPORTS = {"JavaScript": {""},
+               "Python": {"import_statement", "import_from_statement", "future_import_statement"},
+               "Java": {""},
+               "C++": {"preproc_include"},
+               "Ruby": {""},
+               "TypeScript": {""},
+               "TSX": {""},
+               "PHP": {""},
+               "C#": {""}}
+
     @staticmethod
     def get_positional_bytes(node: tree_sitter.Node) -> Tuple[int, int]:
         """
@@ -131,7 +143,6 @@ class TreeSitterParser:
         end = node.end_byte
         return start, end
 
-    # TODO: non-recursive traversal
     @staticmethod
     def traverse_tree(node: tree_sitter.Node, types: Set[str]) -> Iterator[tree_sitter.Node]:
         """
@@ -140,11 +151,12 @@ class TreeSitterParser:
         :param types: the set of types of interest.
         :return: the iterator of Tree-sitter nodes of necessary types.
         """
-        for child in node.children:
-            if child.type in types:
-                yield child
-            if len(child.children) != 0:
-                yield from TreeSitterParser.traverse_tree(child, types)
+        stack = deque([node])
+        while stack:
+            node = stack.popleft()
+            stack.extendleft(reversed(node.children))
+            if node.type in types:
+                yield node
 
     @staticmethod
     def get_identifier_from_node(code: bytes, node: tree_sitter.Node,
@@ -182,14 +194,10 @@ class TreeSitterParser:
         :param subtokenize: if True, will split the tokens into subtokens.
         :return: list of identifiers as either strings or IdentifierData objects.
         """
-        try:
-            token_nodes = TreeSitterParser.traverse_tree(node, TreeSitterParser.IDENTIFIERS[lang])
-        except RecursionError:
-            return []
+        token_nodes = TreeSitterParser.traverse_tree(node, TreeSitterParser.IDENTIFIERS[lang])
         tokens_sequence = []
         for token_node in token_nodes:
-            token = TreeSitterParser.get_identifier_from_node(code, token_node,
-                                                              identifiers_verbose)
+            token = TreeSitterParser.get_identifier_from_node(code, token_node, identifiers_verbose)
             if not subtokenize:
                 tokens_sequence.append(token)
             else:
@@ -257,14 +265,16 @@ class TreeSitterParser:
         :param lang: the language of code.
         :return: a set of tree-sitter node types.
         """
-        identifier_types, function_types, class_types = set(), set(), set()
+        identifier_types, function_types, class_types, import_types = set(), set(), set(), set()
         if lang in TreeSitterParser.IDENTIFIERS.keys():
             identifier_types = TreeSitterParser.IDENTIFIERS[lang]
         if lang in TreeSitterParser.FUNCTIONS.keys():
             function_types = TreeSitterParser.FUNCTIONS[lang]
         if lang in TreeSitterParser.CLASSES.keys():
             class_types = TreeSitterParser.CLASSES[lang]
-        return identifier_types | function_types | class_types
+        if lang in TreeSitterParser.IMPORTS.keys():
+            import_types = TreeSitterParser.IMPORTS[lang]
+        return identifier_types | function_types | class_types | import_types
 
     # TODO: check pipeline patterns, refactor
     @staticmethod
@@ -290,6 +300,7 @@ class TreeSitterParser:
             identifiers_type = IdentifiersTypes.VERBOSE
         else:
             identifiers_type = IdentifiersTypes.STRING
+
         identifiers = []
         objects = []
         # The tree is traversed once per file
@@ -320,6 +331,15 @@ class TreeSitterParser:
                                                                          node, lang,
                                                                          identifiers_verbose,
                                                                          subtokenize))
+
+            # Gathering ObjectData for imports
+            elif node.type in TreeSitterParser.IMPORTS[lang]:
+                if gather_objects:
+                    objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.IMPORT, code,
+                                                                         node, lang,
+                                                                         identifiers_verbose,
+                                                                         subtokenize))
+
         return FileData(path=file, lang=lang, objects=objects, identifiers=identifiers,
                         identifiers_type=identifiers_type)
 

@@ -110,7 +110,8 @@ class OutputFormats:
                         for obj in file.objects:
                             if (gran == "functions" and
                                 obj.object_type == ObjectTypes.FUNCTION) or \
-                                    (gran == "classes" and obj.object_type == ObjectTypes.CLASS):
+                                    (gran == "classes" and obj.object_type == ObjectTypes.CLASS) or \
+                                    (gran == "imports" and obj.object_type == ObjectTypes.IMPORT):
                                 if mode == "counters":
                                     object_tokens = counter_to_wabbit(Counter(obj.identifiers))
                                 else:
