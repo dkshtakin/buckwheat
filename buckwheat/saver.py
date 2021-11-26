@@ -42,7 +42,7 @@ class OutputFormats:
                            FileData objects as values.
         :param mode: the mode of parsing. Either "counters" or "sequences".
         :param gran: granularity of parsing. Values are ["projects", "files", "classes",
-                     "functions"].
+                     "functions", "imports"].
         :param output_dir: full path to the output directory.
         :param filename: the name of the output file.
         :return: none.
@@ -118,11 +118,15 @@ class OutputFormats:
                                     object_tokens = sequence_to_wabbit(obj.identifiers,
                                                                        obj.identifiers_type)
                                 if len(object_tokens) != 0:  # Skipping empty objects.
+                                    fout.write("{tokens}\n".format(tokens=object_tokens))
+                                    """
+                                    You can use it if you want print paths 
                                     fout.write("{name} {tokens}\n"
                                                .format(name=f"{file.path}"
                                                             f"#L{obj.start_line + 1}-"
                                                             f"L{obj.end_line + 1}",
                                                        tokens=object_tokens))
+                                    """
 
     @classmethod
     def save_json(cls, reps2files: Dict[str, List[FileData]], mode: str, gran: str,
@@ -134,7 +138,7 @@ class OutputFormats:
                            sequences of tokens and their parameters as values.
         :param mode: the mode of parsing. Either "counters" or "sequences".
         :param gran: granularity of parsing. Values are ["projects", "files", "classes",
-                     "functions"].
+                     "functions", "imports"].
         :param output_dir: full path to the output directory.
         :param filename: the name of the output file.
         :return: none.

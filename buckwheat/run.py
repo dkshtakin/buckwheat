@@ -49,7 +49,8 @@ if __name__ == "__main__":
                         choices=GRANULARITIES, default="files",
                         help="The granularity level of parsing: 'projects' for the level of "
                              "projects/directories, 'files' for the level of files, 'classes' for "
-                             "the level of classes, and 'functions' for the level of functions.")
+                             "the level of classes, 'functions' for the level of functions, "
+                             "and 'imports' for the level of imports")
     parser.add_argument("-l", "--languages", nargs="*",
                         help="Languages of parsing. By default, its all the "
                              "languages supported in a given parsing granularity.")

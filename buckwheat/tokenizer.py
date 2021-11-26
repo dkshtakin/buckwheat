@@ -549,9 +549,11 @@ def tokenize_repository(repository: str, local: bool, mode: str, gran: str,
         if local:
             directory = repository  # Working directly with a path in the local mode
             if not os.path.isdir(directory):
-                raise RepositoryError(f"{directory} isn't a directory!")
+                print("opa ", repr(directory))
+                raise RepositoryError(f"{repr(directory)} isn't a directory!")
             repository_name = directory
         else:
+            print("ok")
             logging.debug(f"Cloning {repository}.")
             directory = td  # Working with a temporary directory in the remote mode
             clone_repository(repository, directory)  # Cloning the repository
@@ -600,7 +602,7 @@ def tokenize_list_of_repositories(repositories_file: str, output_dir: str, batch
     :param repositories_file: path to text file with a list of repositories.
     :param output_dir: path to the output directory.
     :param batch_size: the number of repositories to be grouped into a single batch / file.
-    :param gran: granularity of parsing. Values are ["projects", "files", "classes", "functions"].
+    :param gran: granularity of parsing. Values are ["projects", "files", "classes", "functions", "imports"].
     :param mode: the mode of parsing. Either "counters" or "sequences".
     :param languages: the languages of parsing. None for all the languages available for a
                       given parsing granularity, specific languages for themselves.
@@ -646,7 +648,7 @@ def tokenize_list_of_repositories(repositories_file: str, output_dir: str, batch
                                                                  identifiers_verbose,
                                                                  subtokenize)
                 except RepositoryError:
-                    logging.warning(f"{repository} is an incorrect link, skipping...")
+                    logging.warning(f"{repr(repository)} is an incorrect link, skipping...")
                     continue
                 reps2files[repository_name] = files
             logging.info(f"Writing batch {count_batch + 1} out "

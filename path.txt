@@ -1,2 +1,0 @@
-buckwheat/tests/input_python
-buckwheat/tests/input_cpp
