@@ -128,7 +128,7 @@ class TreeSitterParser:
                "Java": {"import_declaration"},
                "C++": {"preproc_include"},
                "Ruby": {""},
-               "TypeScript": {""},
+               "TypeScript": {"import_statement", "import_alias", "named_imports", "namespace_import"},
                "TSX": {""},
                "PHP": {""},
                "C#": {"using_statement", "using_directive"},
