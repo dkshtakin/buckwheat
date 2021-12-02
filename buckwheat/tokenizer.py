@@ -135,6 +135,8 @@ class TreeSitterParser:
                "Go": {"import_spec"},
                "Rust": {"extern_crate_declaration"}}
 
+    NAMES = {"Python": {"expression_list", "parameters", "variables"}}
+
     @staticmethod
     def get_positional_bytes(node: tree_sitter.Node) -> Tuple[int, int]:
         """
@@ -158,6 +160,7 @@ class TreeSitterParser:
         while stack:
             node = stack.popleft()
             stack.extendleft(reversed(node.children))
+
             if node.type in types:
                 yield node
 
@@ -268,7 +271,7 @@ class TreeSitterParser:
         :param lang: the language of code.
         :return: a set of tree-sitter node types.
         """
-        identifier_types, function_types, class_types, import_types = set(), set(), set(), set()
+        identifier_types, function_types, class_types, import_types, name_types = set(), set(), set(), set(), set()
         if lang in TreeSitterParser.IDENTIFIERS.keys():
             identifier_types = TreeSitterParser.IDENTIFIERS[lang]
         if lang in TreeSitterParser.FUNCTIONS.keys():
@@ -277,7 +280,9 @@ class TreeSitterParser:
             class_types = TreeSitterParser.CLASSES[lang]
         if lang in TreeSitterParser.IMPORTS.keys():
             import_types = TreeSitterParser.IMPORTS[lang]
-        return identifier_types | function_types | class_types | import_types
+        if lang in TreeSitterParser.IMPORTS.keys():
+            name_types = TreeSitterParser.NAMES[lang]
+        return identifier_types | function_types | class_types | import_types | name_types
 
     # TODO: check pipeline patterns, refactor
     @staticmethod
@@ -320,10 +325,18 @@ class TreeSitterParser:
                         identifiers.extend(subtokenize_identifier(
                             TreeSitterParser.get_identifier_from_node(code, node,
                                                                       identifiers_verbose)))
-                        # Gathering ObjectData for imports
+            # Gathering ObjectData for imports
             elif node.type in TreeSitterParser.IMPORTS[lang]:
                 if gather_objects:
                     objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.IMPORT, code,
+                                                                         node, lang,
+                                                                         identifiers_verbose,
+                                                                         subtokenize))
+
+            # Gathering ObjectData for names
+            elif node.type in TreeSitterParser.NAMES[lang]:
+                if gather_objects:
+                    objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.NAME, code,
                                                                          node, lang,
                                                                          identifiers_verbose,
                                                                          subtokenize))
@@ -601,7 +614,7 @@ def tokenize_list_of_repositories(repositories_file: str, output_dir: str, batch
     :param repositories_file: path to text file with a list of repositories.
     :param output_dir: path to the output directory.
     :param batch_size: the number of repositories to be grouped into a single batch / file.
-    :param gran: granularity of parsing. Values are ["projects", "files", "classes", "functions", "imports"].
+    :param gran: granularity of parsing. Values are ["projects", "files", "classes", "functions", "imports", "names"].
     :param mode: the mode of parsing. Either "counters" or "sequences".
     :param languages: the languages of parsing. None for all the languages available for a
                       given parsing granularity, specific languages for themselves.

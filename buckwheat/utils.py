@@ -18,13 +18,15 @@ SUPPORTED_LANGUAGES = {"tree-sitter": {"JavaScript", "Python", "Java", "Go", "C+
                                    "TSX", "PHP", "C#"},
                        "functions": {"JavaScript", "Python", "Java", "Go", "C++", "Ruby",
                                      "TypeScript", "TSX", "PHP", "C#", "C", "Shell", "Rust"},
-                       "imports": {"C++", "Python", "C#", "Go", "Java", "Rust", "TypeScript"}}
+                       "imports": {"C++", "Python", "C#", "Go", "Java", "Rust", "TypeScript"},
+                       "names": {"Python"}}
 
 # Supported parsing modes
 PARSING_MODES = {"sequences", "counters"}
 
+
 # Supported granularities of parsing
-GRANULARITIES = {"projects", "files", "classes", "functions", "imports"}
+GRANULARITIES = {"projects", "files", "classes", "functions", "imports", "names"}
 
 # Supported output formats
 OUTPUT_FORMATS = {"wabbit", "json"}
@@ -34,6 +36,7 @@ class ObjectTypes(Enum):
     CLASS = "class"
     FUNCTION = "function"
     IMPORT = "import"
+    NAME = "name"
 
 
 class IdentifiersTypes(Enum):
@@ -190,6 +193,8 @@ def transform_files_list(lang2files: Dict[str, List[str]], gran: str,
         res_langs = SUPPORTED_LANGUAGES["functions"]
     elif gran == "imports":
         res_langs = SUPPORTED_LANGUAGES["imports"]
+    elif gran == "names":
+        res_langs = SUPPORTED_LANGUAGES["names"]
     else:
         # TODO: Better error messages
         raise ValueError("Incorrect granularity of parsing.")
