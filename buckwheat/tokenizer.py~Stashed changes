@@ -133,12 +133,13 @@ class TreeSitterParser:
                "PHP": {""},
                "C#": {"using_statement", "using_directive"},
                "Go": {"import_spec"},
+               "Shell": {""},
+               "C": {""},
                "Rust": {"extern_crate_declaration"}}
 
-    NAMES = {"Python": {"expression_list", "parameters", "variables"},
-             "JavaScript": {""},
+    NAMES = {"JavaScript": {""},
+             "Python": {"expression_list", "parameters", "variables"},
              "Java": {""},
-             "Go": {""},
              "C++": {""},
              "Ruby": {""},
              "TypeScript": {""},
@@ -146,6 +147,7 @@ class TreeSitterParser:
              "PHP": {""},
              "C#": {""},
              "C": {""},
+             "Go": {""},
              "Shell": {""},
              "Rust": {""}}
 
@@ -292,6 +294,8 @@ class TreeSitterParser:
             class_types = TreeSitterParser.CLASSES[lang]
         if lang in TreeSitterParser.IMPORTS.keys():
             import_types = TreeSitterParser.IMPORTS[lang]
+        if lang in TreeSitterParser.IMPORTS.keys():
+            name_types = TreeSitterParser.IMPORTS[lang]
         if lang in TreeSitterParser.NAMES.keys():
             name_types = TreeSitterParser.NAMES[lang]
         return identifier_types | function_types | class_types | import_types | name_types
