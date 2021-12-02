@@ -79,7 +79,8 @@ class TreeSitterParser:
                                   "shorthand_property_identifier"},
                    "Python": {"identifier"},
                    "Java": {"identifier", "type_identifier"},
-                   "Go": {"identifier", "field_identifier", "type_identifier"},
+                   "Go": {"identifier", "field_identifier", "type_identifier", "interpreted_string_literal",
+                          "raw_string_literal"},
                    "C++": {"identifier", "namespace_identifier", "field_identifier",
                            "type_identifier", "system_lib_string"},
                    "Ruby": {"identifier", "constant", "symbol"},
@@ -88,7 +89,7 @@ class TreeSitterParser:
                    "TSX": {"identifier", "property_identifier",
                            "shorthand_property_identifier", "type_identifier"},
                    "PHP": {"name"},
-                   "C#": {"identifier"},
+                   "C#": {"identifier", "variable_declaration"},
                    "C": {"identifier", "field_identifier", "type_identifier"},
                    "Shell": {"variable_name", "command_name"},
                    "Rust": {"identifier", "field_identifier", "type_identifier"}}
@@ -124,13 +125,15 @@ class TreeSitterParser:
     # Tree-sitter nodes corresponding to imports in a given language.
     IMPORTS = {"JavaScript": {""},
                "Python": {"import_statement", "import_from_statement", "future_import_statement"},
-               "Java": {""},
+               "Java": {"import_declaration"},
                "C++": {"preproc_include"},
                "Ruby": {""},
                "TypeScript": {""},
                "TSX": {""},
                "PHP": {""},
-               "C#": {""}}
+               "C#": {"using_statement", "using_directive"},
+               "Go": {"import_spec"},
+               "Rust": {"extern_crate_declaration"}}
 
     @staticmethod
     def get_positional_bytes(node: tree_sitter.Node) -> Tuple[int, int]:
@@ -317,6 +320,13 @@ class TreeSitterParser:
                         identifiers.extend(subtokenize_identifier(
                             TreeSitterParser.get_identifier_from_node(code, node,
                                                                       identifiers_verbose)))
+                        # Gathering ObjectData for imports
+            elif node.type in TreeSitterParser.IMPORTS[lang]:
+                if gather_objects:
+                    objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.IMPORT, code,
+                                                                         node, lang,
+                                                                         identifiers_verbose,
+                                                                         subtokenize))
             # Gathering ObjectData for functions
             elif node.type in TreeSitterParser.FUNCTIONS[lang]:
                 if gather_objects:
@@ -331,15 +341,6 @@ class TreeSitterParser:
                                                                          node, lang,
                                                                          identifiers_verbose,
                                                                          subtokenize))
-
-            # Gathering ObjectData for imports
-            elif node.type in TreeSitterParser.IMPORTS[lang]:
-                if gather_objects:
-                    objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.IMPORT, code,
-                                                                         node, lang,
-                                                                         identifiers_verbose,
-                                                                         subtokenize))
-
         return FileData(path=file, lang=lang, objects=objects, identifiers=identifiers,
                         identifiers_type=identifiers_type)
 
@@ -549,11 +550,9 @@ def tokenize_repository(repository: str, local: bool, mode: str, gran: str,
         if local:
             directory = repository  # Working directly with a path in the local mode
             if not os.path.isdir(directory):
-                print("opa ", repr(directory))
                 raise RepositoryError(f"{repr(directory)} isn't a directory!")
             repository_name = directory
         else:
-            print("ok")
             logging.debug(f"Cloning {repository}.")
             directory = td  # Working with a temporary directory in the remote mode
             clone_repository(repository, directory)  # Cloning the repository
