@@ -3,3 +3,4 @@
 /buckwheat/language_recognition/build/*
 !buckwheat/language_recognition/build/.gitkeep
 *.pyc
+*__pycache__*
