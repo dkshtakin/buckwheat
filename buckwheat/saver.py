@@ -72,7 +72,7 @@ class OutputFormats:
             :return: string "token1:parameters token2:parameters..." sorted as in original code.
             """
             if identifiers_type == IdentifiersTypes.STRING:
-                return " ".join(sequence)
+                return "".join(sequence)
             elif identifiers_type == IdentifiersTypes.VERBOSE:
                 formatted_tokens = []
                 for token in sequence:
@@ -112,7 +112,8 @@ class OutputFormats:
                                 obj.object_type == ObjectTypes.FUNCTION) or \
                                     (gran == "classes" and obj.object_type == ObjectTypes.CLASS) or \
                                     (gran == "imports" and obj.object_type == ObjectTypes.IMPORT) or \
-                                    (gran == "names" and obj.object_type == ObjectTypes.NAME):
+                                    (gran == "names" and obj.object_type == ObjectTypes.NAME) or \
+                                    (gran == "docstrings" and obj.object_type == ObjectTypes.DOCSTRING):
                                 if mode == "counters":
                                     object_tokens = counter_to_wabbit(Counter(obj.identifiers))
                                 else:

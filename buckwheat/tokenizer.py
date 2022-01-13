@@ -149,6 +149,20 @@ class TreeSitterParser:
              "Shell": {""},
              "Rust": {""}}
 
+    DOCSTRINGS = {"Python": {"block"},
+                  "JavaScript": {""},
+                  "Java": {""},
+                  "Go": {""},
+                  "C++": {""},
+                  "Ruby": {""},
+                  "TypeScript": {""},
+                  "TSX": {""},
+                  "PHP": {""},
+                  "C#": {""},
+                  "C": {""},
+                  "Shell": {""},
+                  "Rust": {""}}
+
     @staticmethod
     def get_positional_bytes(node: tree_sitter.Node) -> Tuple[int, int]:
         """
@@ -259,21 +273,40 @@ class TreeSitterParser:
         :param subtokenize: if True, will split the tokens into subtokens.
         :return: ObjectData object.
         """
-        start_byte, end_byte = TreeSitterParser.get_positional_bytes(node)
-        content = code[start_byte:end_byte].decode("utf-8")
-        start_line, start_column = node.start_point
-        end_line, end_column = node.end_point
-        identifiers = TreeSitterParser.get_identifiers_sequence_from_node(code, node, lang,
-                                                                          identifiers_verbose,
-                                                                          subtokenize)
         if identifiers_verbose:
             identifiers_type = IdentifiersTypes.VERBOSE
         else:
             identifiers_type = IdentifiersTypes.STRING
+        if object_type == ObjectTypes.DOCSTRING:
+            identifiers = TreeSitterParser.get_identifier_from_node(code, node)
+        else:
+            identifiers = TreeSitterParser.get_identifiers_sequence_from_node(code, node, lang,
+                                                                              identifiers_verbose,
+                                                                              subtokenize)
+        start_byte, end_byte = TreeSitterParser.get_positional_bytes(node)
+        content = code[start_byte:end_byte].decode("utf-8")
+        start_line, start_column = node.start_point
+        end_line, end_column = node.end_point
         return ObjectData(object_type=object_type, content=content, lang=lang,
                           identifiers=identifiers, identifiers_type=identifiers_type,
                           start_byte=start_byte, start_line=start_line, start_column=start_column,
                           end_byte=end_byte, end_line=end_line, end_column=end_column)
+
+    @staticmethod
+    def get_docstring_from_node(code: bytes, node: tree_sitter.Node, lang: str) -> ObjectData:
+        """
+        :param code: the original code in bytes.
+        :param node: the node of the tree-sitter AST.
+        :param lang: the language of code.
+        :return: ObjectData object.
+        """
+        # block -> expression_statement, ... -> string
+        if lang == "Python":
+            if len(node.children) > 1 and len(node.children[0].children) == 1 and \
+                   node.children[0].children[0].type == "string":
+                return TreeSitterParser.get_object_from_node(ObjectTypes.DOCSTRING, code,
+                                                             node.children[0].children[0], lang)
+        return None
 
     @staticmethod
     def merge_nodes_for_lang(lang: str) -> Set[str]:
@@ -283,7 +316,8 @@ class TreeSitterParser:
         :param lang: the language of code.
         :return: a set of tree-sitter node types.
         """
-        identifier_types, function_types, class_types, import_types, name_types = set(), set(), set(), set(), set()
+        identifier_types, function_types, class_types = set(), set(), set()
+        import_types, name_types, docstring_types = set(), set(), set()
         if lang in TreeSitterParser.IDENTIFIERS.keys():
             identifier_types = TreeSitterParser.IDENTIFIERS[lang]
         if lang in TreeSitterParser.FUNCTIONS.keys():
@@ -294,7 +328,9 @@ class TreeSitterParser:
             import_types = TreeSitterParser.IMPORTS[lang]
         if lang in TreeSitterParser.NAMES.keys():
             name_types = TreeSitterParser.NAMES[lang]
-        return identifier_types | function_types | class_types | import_types | name_types
+        if lang in TreeSitterParser.DOCSTRINGS.keys():
+            docstring_types = TreeSitterParser.DOCSTRINGS[lang]
+        return identifier_types | function_types | class_types | import_types | name_types | docstring_types
 
     # TODO: check pipeline patterns, refactor
     @staticmethod
@@ -338,6 +374,10 @@ class TreeSitterParser:
                             TreeSitterParser.get_identifier_from_node(code, node,
                                                                       identifiers_verbose)))
             # Gathering ObjectData for imports
+            elif node.type in TreeSitterParser.DOCSTRINGS[lang]:
+                obj = TreeSitterParser.get_docstring_from_node(code, node, lang)
+                if obj is not None:
+                    objects.append(obj)
             elif node.type in TreeSitterParser.IMPORTS[lang]:
                 if gather_objects:
                     objects.append(TreeSitterParser.get_object_from_node(ObjectTypes.IMPORT, code,
