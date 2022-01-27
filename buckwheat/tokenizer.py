@@ -658,6 +658,7 @@ def tokenize_repository(repository: str, local: bool, mode: str, gran: str,
 def tokenize_list_of_repositories(repositories_file: str, output_dir: str, batch_size: int,
                                   mode: str, gran: str, languages: Optional[List[str]],
                                   local: bool, output_format: str,
+                                  repo_name: str,
                                   identifiers_verbose: bool = False,
                                   subtokenize: bool = False) -> None:
     """
@@ -700,21 +701,21 @@ def tokenize_list_of_repositories(repositories_file: str, output_dir: str, batch
         for count_batch, batch in enumerate(repositories_batches):
             logging.info(f"Tokenizing batch {count_batch + 1} out of {len(repositories_batches)}.")
             reps2files = {}
-            filename = f"{output_format}_{mode}_{gran}_{count_batch}.txt"
+            filename = f"{repo_name}_{output_format}_{mode}_{gran}_{count_batch}.txt"
             # Iterating over repositories in the batch
             # TODO: add progress bar
             for count_repository, repository in enumerate(batch):
                 logging.info(f"Tokenizing repository: {repository} ({count_repository + 1} "
                              f"out of {len(batch)} in batch {count_batch + 1}).")
                 try:
-                    repository_name, files = tokenize_repository(repository, local, mode,
+                    dir_name, files = tokenize_repository(repository, local, mode,
                                                                  gran, languages, pool,
                                                                  identifiers_verbose,
                                                                  subtokenize)
                 except RepositoryError:
                     logging.warning(f"{repr(repository)} is an incorrect link, skipping...")
                     continue
-                reps2files[repository_name] = files
+                reps2files[dir_name] = files
             logging.info(f"Writing batch {count_batch + 1} out "
                          f"of {len(repositories_batches)} to file.")
             if len(reps2files.keys()) != 0:  # Skipping possible empty batches.

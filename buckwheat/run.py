@@ -25,7 +25,7 @@ def main(args: argparse.Namespace) -> None:
                                   gran=args.granularity, languages=args.languages, local=args.local,
                                   output_format=args.format,
                                   identifiers_verbose=args.identifiers_verbose,
-                                  subtokenize=args.subtokenize)
+                                  subtokenize=args.subtokenize, repo_name=args.repo_name)
 
 
 if __name__ == "__main__":
@@ -68,5 +68,7 @@ if __name__ == "__main__":
     parser.add_argument("--local", action="store_true",
                         help="If passed, switches the tokenization into the local mode, where "
                              "the input list must contain paths to local directories.")
+    parser.add_argument("-rn", "--repo_name", default="",
+                        help="Name of repository")
     args = parser.parse_args()
     main(args)
